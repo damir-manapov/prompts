@@ -6,7 +6,7 @@ I need new project, project root should be in <-->
 
 Project is about <-->
 
-Author is <-->, licence is MIT
+Author is Damir Manapov, licence is MIT
 
 My stack is typescript, pnpm, vitest, tsx, eslint, prettier, gitleaks
 
