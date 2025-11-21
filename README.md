@@ -12,7 +12,7 @@ My stack is typescript, pnpm, vitest, tsx, eslint, prettier, gitleaks
 
 Make sure project uses last verions of dependencies.
 
-### Lint, format, check
+## Lint, format, check
 
 Make sure eslint rules and tsconfig are strict.
 
@@ -43,3 +43,8 @@ Dont forget about gitignore, readme
 Run all-checks.sh, make sure it passed without errors.
 
 in package.json dependencies should be above devDependencies, author and license in upper part of file.
+
+## I you need docker compose
+* Use `docker compose` instead of `docker-compose`
+* Make commands in package.json with compose prefix (up, down, restart, reset)
+* On reset dont forget to delete volumes and orphans
