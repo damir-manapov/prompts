@@ -49,3 +49,4 @@ in package.json dependencies should be above devDependencies, author and license
 * Make commands in package.json with compose prefix (up, down, restart, reset)
 * On reset dont forget to delete volumes and orphans
 * Dont put version to compose file, its obsolete
+* Use last verions of images, but pin them vy verion tags
