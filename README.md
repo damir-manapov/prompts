@@ -50,3 +50,4 @@ in package.json dependencies should be above devDependencies, author and license
 * On reset dont forget to delete volumes and orphans
 * Don't put version to compose file, its obsolete
 * Use last verions of images, but pin them vy verion tags
+* add starter service to compose file that waits all other services started succesfully. Tatget it when starting docker compose. Place that service first
