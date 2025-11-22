@@ -51,3 +51,4 @@ in package.json dependencies should be above devDependencies, author and license
 * Don't put version to compose file, its obsolete
 * Use last verions of images, but pin them vy verion tags
 * add starter service to compose file that waits all other services started succesfully. Tatget it when starting docker compose. Place that service first
+* Don't set restart and container_name options on compoose file
