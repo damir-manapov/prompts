@@ -2,6 +2,8 @@
 
 Below is a reusable prompt for an LLM. You provide a GitHub repository URL; the model analyzes (as far as it can) and produces a concise, engaging Russian summary suitable for posting to a technical Telegram channel. The final line of the output must be the repository URL itself.
 
+**Note:** This prompt works best with reasoning models (e.g., o1, o3-mini) which can better verify repository contents and avoid inventing features.
+
 ---
 
 LLM PROMPT (copy from "BEGIN" to "END"):
@@ -14,24 +16,26 @@ Repository URL: {{REPO_URL}}
 Goal: Produce a structured Russian-language summary (≈ 700–1100 characters, ≤ ~12 lines) that is clear to developers, terse and factual. Use short, direct sentences. Avoid descriptive fluff, marketing phrasing or generalized prose. Do NOT use hashtags. Do not use any emoji.
 
 Structure (do NOT label sections explicitly; produce a naturally flowing text):
-1. Brief hook: what the project is and why it exists (1 short sentence).
+1. Start immediately with what the code does or provides (direct, action-oriented); skip meta-phrases like "Этот проект", "Данный репозиторий", "Руководство по".
 2. Key capabilities / notable features stated as plain sentences separated by periods; no bullet characters.
 
 Requirements:
 - The entire summary must be in Russian.
 - Keep tone professional yet lively.
-- Do not invent non-existent features.
+- Do not invent, extrapolate, or assume features: describe ONLY what is directly verifiable in the repository's code, README, or documentation; if you cannot confirm a capability exists, do not mention it.
 - Do not mention that you are an AI or a language model.
 - Do not use any emoji.
 - Final output line must contain ONLY the repository URL.
 - Do not include author names or license information; focus on technical and functional aspects only.
-- Do not list technology stack or tooling explicitly; focus on purpose and capabilities only.
+- Do not list general technology stack (language, framework, build tools); however, if the project is specifically about integrating with or demonstrating a particular external tool/service/platform (e.g., Kafka, PostgreSQL, Kubernetes), mention those tools by name.
 - Do not speculate or make assumptions: avoid phrases like "Судя по", "Похоже", "Вероятно"; describe only directly observable aspects without guessing.
 - Do not use bullet characters or list formatting (no •, -, *, numbered lists); output must be a single compact paragraph before the final URL line.
 - Avoid marketing / promotional phrases (e.g. "предлагает практическое руководство", "универсальное решение", "простой и мощный").
-- Prefer concise factual sentences; avoid filler connectors ("Таким образом", "В целом", "Данный репозиторий") unless strictly necessary.
+- Prefer concise factual sentences; avoid filler connectors ("Таким образом", "В целом") unless strictly necessary.
  - Write from maintainer perspective; internal authoritative tone.
  - Do not reason about missing parts or limitations (ban phrases: "не видно", "не просматривается", "объём данных ограничен", "по всей видимости", "отсутствует").
+ - Do not use meta-references to the repository itself (ban: "Этот проект", "Данный репозиторий", "Этот код", "Практическое руководство"); jump straight to the functionality.
+ - Do not describe project meta-infrastructure (linting, formatting, build scripts, CI/CD, test runners) unless that infrastructure itself is the project's main purpose (e.g., a linter plugin or build tool); focus on end-user functionality and domain logic only.
 
 Output format:
 [Russian summary text]
