@@ -1,57 +1,38 @@
-# Prompts
+# Prompt Collection
 
-# Creting project
+Central index of reusable LLM prompts kept in this directory. Each prompt lives in its own markdown file to keep them composable and versionable.
 
-I need new project, project root should be in <-->
+## Available Prompts
 
-Project is about <-->
+- `newProject.md` – Scaffold a new TypeScript project (dependencies, scripts, linting, security, compose notes).
+- `repoSummaryTelegram.md` – Generate a concise Russian summary of a GitHub repository for posting to a Telegram channel (English prompt text, Russian output, no emoji, includes link at end).
 
-Author is Damir Manapov, licence is MIT
+## Usage Pattern
+1. Open the desired prompt file.
+2. Replace placeholders (e.g. `{{REPO_URL}}`, project description slots).
+3. Copy the block indicated (usually between `BEGIN`/`END`).
+4. Paste into your chosen LLM interface.
+5. Review output for accuracy before publishing or using.
 
-My stack is typescript, pnpm, vitest, tsx, eslint, prettier, gitleaks
+## Adding New Prompts
+When adding a new prompt:
+* Keep scope focused (one clear task per file).
+* Use placeholders like `{{VARIABLE_NAME}}` for required inputs.
+* Indicate explicit output constraints (length, style, language, forbidden items).
+* Avoid duplicating logic already present in another prompt; instead reference it.
 
-Make sure project uses last verions of dependencies.
+## Conventions
+* File names: `kebabCase` or descriptive phrases; keep `.md` extension.
+* No embedded proprietary secrets or tokens.
+* Prompts must state if they require external repository/code inspection or operate on provided text only.
+* Specify any forbidden elements (e.g. no hashtags, no emoji) explicitly.
 
-## Lint, format, check
+## Roadmap Ideas
+Potential future prompt files:
+- `multiRepoDigest.md` – Summaries across several repos in one post.
+- `releaseAnnouncement.md` – Changelog-driven release note synthesis.
+- `issueTriager.md` – Classify and prioritize incoming issues.
 
-Make sure eslint rules and tsconfig are strict.
+---
 
-Tests should also be checked by tsconfig, lint and formatting.
-
-Make sure lint output errors if
-* deprections used in code
-* "any" used
-
-Use last versioni of eslint and last file config format.
-
-I need 2-spaced across project files.
-
-Make sure there is no vulnarabilities.
-
-At the root of project create scripts:
-
-* check.sh - runs formatting (fixing issues), check lint, check build (without emitting), run tests
-* health.sh - checks gitleaks (including git), check dependencies used have up-to date versions, that there is no vulnaralbilities. If any outdated dep or vulnarability found script should fail
-* all-checks.sh - runs both scripts
-
-If you add instructions to install some software don't use project root for that and don't forget to add instructions on deleting temporary files if any.
-
-If you are writing bash/sh scripts keep them simple, no fancy formatting. Make sure output is informative. Make sure such scripts fail fast.
-
-Dont forget about gitignore, readme
-
-Run all-checks.sh, make sure it passed without errors.
-
-in package.json dependencies should be above devDependencies, author and license in upper part of file.
-
-## I you need docker compose
-* Use `docker compose` instead of `docker-compose`
-* Make commands in package.json with compose prefix (up, down, restart, reset)
-* On reset dont forget to delete volumes and orphans
-* Don't put version to compose file, its obsolete
-* Use last verions of images, but pin them vy verion tags
-* add starter service to compose file that waits all other services started succesfully. Tatget it when starting docker compose. Place that service first
-* Don't set restart and container_name options on compoose file
-
-## Notes
-* If you are going to use `tseslint.config` for `eslint.config.js` - it is deprecated
+For detailed project scaffolding instructions see `newProject.md`. For Telegram-ready repository summaries see `repoSummaryTelegram.md`.
