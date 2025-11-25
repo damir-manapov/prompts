@@ -30,8 +30,8 @@ Make sure there is no vulnarabilities.
 
 At the root of project create scripts:
 
-* check.sh - runs formatting (fixing issues), check lint, check build (without emitting), checks gitleaks (including git), run tests
-* health.sh - check dependencies used have up-to date versions, that there is no vulnaralbilities. If any outdated dep or vulnarability found script should fail
+* check.sh - runs formatting (fixing issues), check lint, check build (without emitting), run tests
+* health.sh - checks gitleaks (including git), check dependencies used have up-to date versions, that there is no vulnaralbilities. If any outdated dep or vulnarability found script should fail
 * all-checks.sh - runs both scripts
 
 If you add instructions to install some software don't use project root for that and don't forget to add instructions on deleting temporary files if any.
