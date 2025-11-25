@@ -52,3 +52,6 @@ in package.json dependencies should be above devDependencies, author and license
 * Use last verions of images, but pin them vy verion tags
 * add starter service to compose file that waits all other services started succesfully. Tatget it when starting docker compose. Place that service first
 * Don't set restart and container_name options on compoose file
+
+## Notes
+* If you are going to use `tseslint.config` for `eslint.config.js` - it is deprecated
