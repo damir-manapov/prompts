@@ -6,6 +6,7 @@ Central index of reusable LLM prompts kept in this directory. Each prompt lives 
 
 - `newProject.md` – Scaffold a new TypeScript project (dependencies, scripts, linting, security, compose notes).
 - `repoSummaryTelegram.md` – Generate a concise Russian summary of a GitHub repository for posting to a Telegram channel (English prompt text, Russian output, no emoji, includes link at end).
+- `thoughtsSummaryTelegram.md` – Generate a concise Russian summary of a GitHub "thoughts" repository (architectural or design documentation) for posting to a Telegram channel (similar structure to `repoSummaryTelegram.md` but tailored for documentation/research projects).
 
 ## Usage Pattern
 1. Open the desired prompt file.
