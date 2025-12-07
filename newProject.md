@@ -42,7 +42,9 @@ If you add instructions to install some software don't use project root for that
 
 If you are writing bash/sh scripts keep them simple, no fancy formatting. Make sure output is informative. Make sure such scripts fail fast.
 
-Don't forget about `.gitignore`, `README.md`
+Don't forget about `.gitignore`, `README.md`.
+
+Don't mention author and license in README, mentioning in `package.json` is enough.
 
 Run `all-checks.sh`, make sure it passed without errors.
 
