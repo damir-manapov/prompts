@@ -59,5 +59,82 @@ In `package.json` dependencies should be above devDependencies, author and licen
 * Add starter service to compose file that waits all other services started successfully. Target it when starting docker compose. Place that service first
 * Don't set `restart` and `container_name` options in compose file
 
+## Commits and Releases
+
+Use conventional commits format:
+- `feat:` new features
+- `fix:` bug fixes
+- `perf:` performance improvements
+- `refactor:` code refactoring
+- `docs:` documentation changes
+- `chore:` maintenance tasks
+- `test:` test changes
+- `build:` build system changes
+- `ci:` CI configuration
+
+### If project will be published to npm
+
+Set up release-it with conventional changelog:
+
+```bash
+pnpm add -D release-it @release-it/conventional-changelog
+```
+
+Create `.release-it.json`:
+```json
+{
+  "git": {
+    "commitMessage": "chore: release v${version}",
+    "tagName": "v${version}",
+    "requireCleanWorkingDir": true,
+    "requireBranch": "main"
+  },
+  "npm": {
+    "publish": true
+  },
+  "github": {
+    "release": false
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": {
+        "name": "conventionalcommits",
+        "types": [
+          { "type": "feat", "section": "Features" },
+          { "type": "fix", "section": "Bug Fixes" },
+          { "type": "perf", "section": "Performance" },
+          { "type": "refactor", "section": "Refactoring" },
+          { "type": "docs", "section": "Documentation" },
+          { "type": "chore", "hidden": true },
+          { "type": "test", "hidden": true },
+          { "type": "build", "hidden": true },
+          { "type": "ci", "hidden": true }
+        ]
+      },
+      "infile": "CHANGELOG.md",
+      "header": "# Changelog"
+    }
+  },
+  "hooks": {
+    "before:init": ["pnpm run lint", "pnpm run typecheck", "pnpm run test"]
+  }
+}
+```
+
+Add scripts to `package.json`:
+```json
+{
+  "scripts": {
+    "release": "release-it",
+    "release:dry": "release-it --dry-run"
+  }
+}
+```
+
+Create initial `CHANGELOG.md`:
+```markdown
+# Changelog
+```
+
 ## Notes
 * If you are going to use `tseslint.config` for `eslint.config.js` - it is deprecated
