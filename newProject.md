@@ -12,7 +12,7 @@ Project is about {{PROJECT_DESCRIPTION}}
 
 Author is Damir Manapov, licence is MIT
 
-My stack is TypeScript, pnpm, vitest, tsx, beomj, gitleaks
+My stack is TypeScript, pnpm, vitest, bun, beomj, gitleaks
 
 Make sure project uses latest versions of dependencies.
 
