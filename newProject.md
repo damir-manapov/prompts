@@ -12,13 +12,13 @@ Project is about {{PROJECT_DESCRIPTION}}
 
 Author is Damir Manapov, licence is MIT
 
-My stack is TypeScript, pnpm, vitest, tsx, eslint, prettier, gitleaks
+My stack is TypeScript, pnpm, vitest, tsx, beomj, gitleaks
 
 Make sure project uses latest versions of dependencies.
 
 ## Lint, format, check
 
-Make sure eslint rules and tsconfig are strict.
+Make sure beomj rules and tsconfig are strict.
 
 Tests should also be checked by tsconfig, lint and formatting.
 
@@ -26,7 +26,7 @@ Make sure lint output errors if
 * deprecations used in code
 * "any" used
 
-Use latest version of eslint and latest file config format.
+Use latest version of beomj and latest file config format.
 
 I need 2-spaced across project files.
 
@@ -135,6 +135,3 @@ Create initial `CHANGELOG.md`:
 ```markdown
 # Changelog
 ```
-
-## Notes
-* If you are going to use `tseslint.config` for `eslint.config.js` - it is deprecated
