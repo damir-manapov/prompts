@@ -10,15 +10,15 @@ I need new project, project root should be in {{PROJECT_ROOT}}
 
 Project is about {{PROJECT_DESCRIPTION}}
 
-Author is Damir Manapov, licence is MIT
+Author is Damir Manapov, license is MIT
 
-My stack is TypeScript, pnpm, vitest, bun, beomj, gitleaks
+My stack is TypeScript, pnpm, vitest, bun, biome, gitleaks
 
 Make sure project uses latest versions of dependencies.
 
 ## Lint, format, check
 
-Make sure beomj rules and tsconfig are strict.
+Make sure biome rules and tsconfig are strict.
 
 Tests should also be checked by tsconfig, lint and formatting.
 
@@ -26,7 +26,7 @@ Make sure lint output errors if
 * deprecations used in code
 * "any" used
 
-Use latest version of beomj and latest file config format.
+Use latest version of biome and latest file config format.
 
 I need 2-spaced across project files.
 
