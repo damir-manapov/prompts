@@ -59,6 +59,48 @@ In `package.json` dependencies should be above devDependencies, author and licen
 * Add starter service to compose file that waits all other services started successfully. Target it when starting docker compose. Place that service first
 * Don't set `restart` and `container_name` options in compose file
 
+## If project has Docker images, Python deps, or other non-npm dependencies
+
+For simple TypeScript-only projects, `pnpm outdated` in `health.sh` is enough. But if the project includes Docker Compose files, Python dependencies, or other package ecosystems, use Renovate for comprehensive dependency checking.
+
+Add `renovate.json` to project root:
+```json
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"]
+}
+```
+
+Add `pep621` matcher if project has Python (`pyproject.toml`):
+```json
+{
+  "pep621": {
+    "fileMatch": ["pyproject.toml"]
+  }
+}
+```
+
+Create `renovate-check.sh` that runs `npx -y renovate --platform=local --dry-run`, parses JSON output, and lists outdated dependencies by category (Docker, npm, Python, etc.). Script should exit with code 1 if any outdated dependencies found. Handle corner cases:
+
+Node.js 24+ "happy eyeballs" IPv6 bug workaround:
+```bash
+PRELOAD_SCRIPT=$(mktemp)
+echo "require('net').setDefaultAutoSelectFamily(false);" > "$PRELOAD_SCRIPT"
+trap "rm -f $PRELOAD_SCRIPT" EXIT
+export NODE_OPTIONS="${NODE_OPTIONS:-} --require=$PRELOAD_SCRIPT --dns-result-order=ipv4first"
+```
+
+Network error detection (exit with code 2):
+```bash
+OUTPUT=$(LOG_FORMAT=json LOG_LEVEL=debug npx -y renovate --platform=local --dry-run 2>&1 || true)
+if echo "$OUTPUT" | grep -q '"result":"external-host-error"'; then
+  echo "⚠ Renovate couldn't reach external hosts (network issue)"
+  exit 2
+fi
+```
+
+Update `health.sh` to call `renovate-check.sh` instead of `pnpm outdated`.
+
 ## Commits and Releases
 
 Use conventional commits format:
