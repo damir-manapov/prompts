@@ -177,3 +177,33 @@ Create initial `CHANGELOG.md`:
 ```markdown
 # Changelog
 ```
+
+## Lessons Learned
+
+### Biome 2.x breaking changes
+* Config schema changed significantly from 1.x to 2.x
+* `organizeImports.enabled` moved to `assist.actions.source.organizeImports: "on"`
+* `files.ignore` replaced with `files.includes` using negation patterns: `["**", "!**/node_modules", "!**/dist"]`
+* `noDeprecated` rule removed from nursery - no direct replacement in 2.x
+* Always run `biome migrate --write` after updating biome to auto-fix config
+
+### TypeScript strict mode with fetch
+* `response.json()` returns `unknown` in strict mode
+* Must use type assertions: `(await response.json()) as MyType`
+* Or define response interfaces and cast explicitly
+
+### Use proper clients over raw fetch
+* For Trino: use `trino-client` package instead of raw HTTP calls
+* Handles pagination (nextUri), connection management, retries
+* Same applies to other services - prefer official/well-maintained clients
+
+### Docker Compose healthchecks
+* Use `service_healthy` condition for dependencies
+* Some services need longer `retries` (Trino, Debezium can take 20+ retries)
+* For Trino healthcheck: `trino --execute 'SELECT 1'`
+* For Kafka: `kafka-broker-api-versions --bootstrap-server localhost:9092`
+
+### Nessie with PostgreSQL backend
+* Nessie can use PostgreSQL for metadata storage (instead of RocksDB)
+* Create separate schema: `CREATE SCHEMA IF NOT EXISTS nessie`
+* Configure via: `QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://host:5432/db?currentSchema=nessie`
