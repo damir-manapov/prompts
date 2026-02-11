@@ -246,3 +246,21 @@ Create initial `CHANGELOG.md`:
 * Keep docker-compose.yml in `compose/` folder for cleaner root
 * Update package.json scripts: `docker compose -f compose/docker-compose.yml`
 * Update relative paths inside compose file (remove `./compose/` prefix)
+
+### KRaft Kafka (Zookeeper-less)
+* Confluent 8.x supports KRaft mode - no Zookeeper required
+* Kafka runs as both broker and controller in single node:
+  ```yaml
+  KAFKA_PROCESS_ROLES: broker,controller
+  KAFKA_NODE_ID: 1
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+  CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk  # Generate with: kafka-storage random-uuid
+  ```
+* Listener configuration for KRaft:
+  ```yaml
+  KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  ```
+* Remove Zookeeper service and related volumes (zookeeper-data, zookeeper-logs)
+* Remove `KAFKA_ZOOKEEPER_CONNECT` environment variable
