@@ -52,7 +52,7 @@ In `package.json` dependencies should be above devDependencies, author and licen
 
 ## If you need docker compose
 * Use `docker compose` instead of `docker-compose`
-* Make commands in `package.json` with compose prefix (`up`, `down`, `restart`, `reset`)
+* Make commands in `package.json` with `compose:` prefix (`compose:pull`, `compose:up`, `compose:down`, `compose:restart`, `compose:reset`)
 * On reset don't forget to delete volumes and orphans
 * Don't put version to compose file, it's obsolete
 * Use latest versions of images, but pin them by version tags
