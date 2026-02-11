@@ -207,3 +207,42 @@ Create initial `CHANGELOG.md`:
 * Nessie can use PostgreSQL for metadata storage (instead of RocksDB)
 * Create separate schema: `CREATE SCHEMA IF NOT EXISTS nessie`
 * Configure via: `QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://host:5432/db?currentSchema=nessie`
+### Trino Iceberg connector with Nessie (Trino 468+)
+* Property names changed: `iceberg.nessie.*` → `iceberg.nessie-catalog.*`
+* Nessie API v2: use `http://nessie:19120/api/v2` (not v1)
+* Required properties:
+  ```properties
+  connector.name=iceberg
+  iceberg.catalog.type=nessie
+  iceberg.nessie-catalog.uri=http://nessie:19120/api/v2
+  iceberg.nessie-catalog.ref=main
+  iceberg.nessie-catalog.default-warehouse-dir=s3://warehouse/
+  ```
+
+### Zookeeper healthcheck
+* Default `ruok` command disabled in recent versions
+* Enable via: `KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=ruok,stat"`
+* Healthcheck: `echo ruok | nc localhost 2181 | grep imok`
+
+### Apache Iceberg Kafka Connect
+* Official connector donated by Tabular to Apache Iceberg
+* No pre-built Docker image - download JAR from Maven Central:
+  ```dockerfile
+  ARG ICEBERG_VERSION=1.7.1
+  RUN mkdir -p /usr/share/confluent-hub-components/iceberg-kafka-connect && \
+      curl -L -o /usr/share/confluent-hub-components/iceberg-kafka-connect/iceberg-kafka-connect-runtime-${ICEBERG_VERSION}.jar \
+      "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-kafka-connect-runtime/${ICEBERG_VERSION}/iceberg-kafka-connect-runtime-${ICEBERG_VERSION}.jar"
+  ```
+* Connector class: `org.apache.iceberg.connect.IcebergSinkConnector`
+* Use `DebeziumTransform` SMT for CDC: `org.apache.iceberg.connect.transforms.DebeziumTransform`
+
+### Renovate output formatting
+* Raw JSON output is hard to read
+* Parse `branchesInformation` from output for clean display
+* Color-code by update type: 🔴 major, 🟡 minor, 🟢 patch
+* Show table with dep name, current version → new version
+
+### Docker Compose file organization
+* Keep docker-compose.yml in `compose/` folder for cleaner root
+* Update package.json scripts: `docker compose -f compose/docker-compose.yml`
+* Update relative paths inside compose file (remove `./compose/` prefix)
