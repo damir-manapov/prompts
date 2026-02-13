@@ -226,13 +226,24 @@ Create initial `CHANGELOG.md`:
 
 ### Apache Iceberg Kafka Connect
 * Official connector donated by Tabular to Apache Iceberg
-* No pre-built Docker image - download JAR from Maven Central:
+* **No pre-built uber-jar available** - Maven Central JAR is thin (no dependencies)
+* Must build from source to get all dependencies bundled:
   ```dockerfile
+  # Multi-stage build from source
+  FROM eclipse-temurin:17-jdk AS builder
   ARG ICEBERG_VERSION=1.7.1
-  RUN mkdir -p /usr/share/confluent-hub-components/iceberg-kafka-connect && \
-      curl -L -o /usr/share/confluent-hub-components/iceberg-kafka-connect/iceberg-kafka-connect-runtime-${ICEBERG_VERSION}.jar \
-      "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-kafka-connect-runtime/${ICEBERG_VERSION}/iceberg-kafka-connect-runtime-${ICEBERG_VERSION}.jar"
+  RUN apt-get update && apt-get install -y git && \
+      git clone --depth 1 --branch apache-iceberg-${ICEBERG_VERSION} \
+      https://github.com/apache/iceberg.git /iceberg
+  WORKDIR /iceberg
+  RUN ./gradlew :iceberg-kafka-connect:iceberg-kafka-connect-runtime:shadowJar \
+      -x test -x integrationTest
+
+  FROM confluentinc/cp-kafka-connect:8.1.1
+  COPY --from=builder /iceberg/kafka-connect/kafka-connect-runtime/build/libs/iceberg-kafka-connect-runtime-*-all.jar \
+      /usr/share/confluent-hub-components/iceberg-kafka-connect/iceberg-kafka-connect-runtime.jar
   ```
+* Build takes ~10-15 minutes (downloads Iceberg source + Gradle build)
 * Connector class: `org.apache.iceberg.connect.IcebergSinkConnector`
 * Use `DebeziumTransform` SMT for CDC: `org.apache.iceberg.connect.transforms.DebeziumTransform`
 
