@@ -180,6 +180,29 @@ Create initial `CHANGELOG.md`:
 
 ## Lessons Learned
 
+### Dual ESM/CJS npm packages
+When publishing a package that may be consumed by both ESM and CJS projects (e.g., projects with `"moduleResolution": "node16"`):
+* Main `tsconfig.json` builds ESM to `dist/`
+* Create `tsconfig.cjs.json` extending the base, overriding `module: "CommonJS"`, `moduleResolution: "node"`, `outDir: "dist/cjs"`, `declaration: false`
+* Build script: `tsc && tsc -p tsconfig.cjs.json`
+* Package exports must include all three conditions:
+  ```json
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  }
+  ```
+* Order matters: `types` first, then `import`, then `require`
+* Without `require` condition, CJS consumers with `node16` resolution will fail to resolve the package
+
+### Exclude spec files from build output
+* Add `"src/**/*.spec.ts"` to `exclude` in **both** `tsconfig.json` and `tsconfig.cjs.json`
+* Otherwise test files leak into `dist/` and get published to npm
+* The exclude must be repeated in the CJS config even if it extends the base (TypeScript does not merge `exclude` arrays)
+
 ### Gitleaks 8.22+ CLI changes
 * `--source` flag removed, path is now a positional argument
 * Old: `gitleaks git --source . --verbose` → New: `gitleaks git . --verbose`
@@ -264,6 +287,11 @@ Create initial `CHANGELOG.md`:
 * Update relative paths inside compose file (remove `./compose/` prefix)
 
 ### KRaft Kafka (Zookeeper-less)
+
+### pnpm may silently bump other dependencies
+* When running `pnpm add <package>`, pnpm may auto-bump other dependencies in `package.json` to newer versions
+* Always check `git diff package.json` after adding a new dependency
+* Revert unintended bumps with `pnpm add [-D] <package>@<original-version>`
 * Confluent 8.x supports KRaft mode - no Zookeeper required
 * Kafka runs as both broker and controller in single node:
   ```yaml
