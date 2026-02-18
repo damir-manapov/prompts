@@ -180,6 +180,11 @@ Create initial `CHANGELOG.md`:
 
 ## Lessons Learned
 
+### Gitleaks 8.22+ CLI changes
+* `--source` flag removed, path is now a positional argument
+* Old: `gitleaks git --source . --verbose` → New: `gitleaks git . --verbose`
+* Old: `gitleaks dir --source . --verbose` → New: `gitleaks dir . --verbose`
+
 ### Biome 2.x breaking changes
 * Config schema changed significantly from 1.x to 2.x
 * `organizeImports.enabled` moved to `assist.actions.source.organizeImports: "on"`
