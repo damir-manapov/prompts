@@ -173,6 +173,14 @@ Add scripts to `package.json`:
 }
 ```
 
+To release, use `--ci` without specifying an explicit increment:
+```bash
+pnpm exec release-it --ci
+pnpm exec release-it --ci --dry-run
+```
+
+**Do not** pass an explicit increment with `--ci` (e.g., `pnpm run release -- --ci patch`). This causes release-it to pass `"--ci"` as the increment to conventional-changelog, which makes `semver.inc()` return `null`, resulting in broken changelog headers (`## []` with `vnull` in compare URLs). Let conventional commits determine the bump type automatically (`fix:` → patch, `feat:` → minor, `feat!:` / `BREAKING CHANGE` → major).
+
 Create initial `CHANGELOG.md`:
 ```markdown
 # Changelog
@@ -184,7 +192,10 @@ Create initial `CHANGELOG.md`:
 When publishing a package that may be consumed by both ESM and CJS projects (e.g., projects with `"moduleResolution": "node16"`):
 * Main `tsconfig.json` builds ESM to `dist/`
 * Create `tsconfig.cjs.json` extending the base, overriding `module: "CommonJS"`, `moduleResolution: "node"`, `outDir: "dist/cjs"`, `declaration: false`
-* Build script: `tsc && tsc -p tsconfig.cjs.json`
+* Build script must generate a `package.json` with `"type": "commonjs"` inside `dist/cjs/`, otherwise Node.js treats `.js` files there as ESM (because root `package.json` has `"type": "module"`) and CJS consumers crash with `ReferenceError: exports is not defined in ES module scope`:
+  ```
+  "build": "tsc && tsc -p tsconfig.cjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json"
+  ```
 * Package exports must include all three conditions:
   ```json
   "exports": {
