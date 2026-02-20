@@ -59,6 +59,59 @@ In `package.json` dependencies should be above devDependencies, author and licen
 * Add starter service to compose file that waits all other services started successfully. Target it when starting docker compose. Place that service first
 * Don't set `restart` and `container_name` options in compose file
 
+## If project is a pnpm monorepo
+
+Use `pnpm-workspace.yaml` with `packages: ['packages/*']`.
+
+Each package gets its own `tsconfig.json` extending the root, with `composite: true` and `outDir: "dist"`.
+
+Root `tsconfig.json` lists all packages in `references`:
+```json
+{
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/client" }
+  ],
+  "files": [],
+  "include": []
+}
+```
+
+### Monorepo type-checking
+
+Tests are not part of composite project references (they depend on dev tools like vitest). Two typecheck scripts are needed:
+
+```json
+{
+  "scripts": {
+    "typecheck": "tsc -b --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.check.json"
+  }
+}
+```
+
+* `tsc -b --noEmit` — graph-aware type-check across all referenced projects in dependency order, without emitting `.js`, `.d.ts`, or `.tsbuildinfo`. Loses incremental cache but works as a fast CI check.
+* `tsconfig.check.json` — flat config (no project references, no `composite`) with `noEmit: true` and `include` covering both `src` and `tests`:
+
+```json
+{
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["packages/*/src/**/*.ts", "packages/*/tests/**/*.ts"],
+  "exclude": ["node_modules", "**/dist"]
+}
+```
+
+`check.sh` should run both:
+```bash
+echo "=== Typecheck ==="
+pnpm typecheck
+
+echo "=== Typecheck (tests) ==="
+pnpm typecheck:tests
+```
+
 ## If project has Docker images, Python deps, or other non-npm dependencies
 
 For simple TypeScript-only projects, `pnpm outdated` in `health.sh` is enough. But if the project includes Docker Compose files, Python dependencies, or other package ecosystems, use Renovate for comprehensive dependency checking.
@@ -236,6 +289,25 @@ Workflow:
 4. Commit and push the version bump and changelog updates
 
 ## Lessons Learned
+
+### Strict TypeScript flags beyond `strict: true`
+Enable these in `tsconfig.json` for stricter compile-time safety:
+* `noUncheckedIndexedAccess: true` — array/record indexing returns `T | undefined` instead of `T`. Forces null-checks on `obj[key]` and `arr[i]`, catches real bugs where index may be out of bounds.
+* `exactOptionalPropertyTypes: true` — `prop?: string` means "may be missing" but NOT "may be `undefined`". To allow explicit `undefined`, declare as `prop?: string | undefined`. Prevents accidental `undefined` assignments.
+* `verbatimModuleSyntax: true` — requires `import type { Foo }` for type-only imports. Prevents importing types as values which would create empty runtime imports.
+
+These flags surface real bugs but require defensive coding:
+```typescript
+// noUncheckedIndexedAccess: must guard array access
+const item = arr[i] // type is T | undefined
+if (item !== undefined) { /* safe to use */ }
+
+// exactOptionalPropertyTypes: explicit undefined needs union
+interface Opts {
+  label?: string           // missing OK, undefined NOT OK
+  label?: string | undefined  // both missing and undefined OK
+}
+```
 
 ### Dual ESM/CJS npm packages
 When publishing a package that may be consumed by both ESM and CJS projects (e.g., projects with `"moduleResolution": "node16"`):
