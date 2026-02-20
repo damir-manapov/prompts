@@ -116,6 +116,15 @@ Use conventional commits format:
 
 ### If project will be published to npm
 
+Choose between **release-it** and **changesets**:
+
+* **release-it** — single-package repos, sole author, conventional commits drive version bumps automatically. Lightweight, manual CLI release flow with dry-run support.
+* **changesets** — pnpm monorepos with multiple published packages, or team workflows where each PR includes a changeset file describing the change. Better for coordinating releases across packages.
+
+Pick release-it unless you have a monorepo with multiple npm packages.
+
+#### Option A: release-it
+
 Set up release-it with conventional changelog:
 
 ```bash
@@ -185,6 +194,46 @@ Create initial `CHANGELOG.md`:
 ```markdown
 # Changelog
 ```
+
+#### Option B: changesets
+
+Set up changesets for monorepo or team workflows:
+
+```bash
+pnpm add -D @changesets/cli @changesets/changelog-github
+pnpm changeset init
+```
+
+Update `.changeset/config.json`:
+```json
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+  "changelog": ["@changesets/changelog-github", { "repo": "owner/repo" }],
+  "commit": false,
+  "fixed": [],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch"
+}
+```
+
+Add scripts to `package.json`:
+```json
+{
+  "scripts": {
+    "changeset": "changeset",
+    "release": "changeset publish",
+    "version": "changeset version"
+  }
+}
+```
+
+Workflow:
+1. After making changes, run `pnpm changeset` to create a changeset file describing the change and bump type
+2. When ready to release, run `pnpm version` to consume changesets and bump versions
+3. Run `pnpm release` to publish to npm
+4. Commit and push the version bump and changelog updates
 
 ## Lessons Learned
 
