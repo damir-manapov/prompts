@@ -25,6 +25,7 @@ Tests should also be checked by tsconfig, lint and formatting.
 Make sure lint output errors if
 * deprecations used in code
 * "any" used
+* non-null assertions (`!`) used
 
 Use latest version of biome and latest file config format.
 
@@ -34,7 +35,7 @@ Make sure there are no vulnerabilities.
 
 At the root of project create scripts:
 
-* `check.sh` - runs formatting (fixing issues), check lint, check build (without emitting), run tests
+* `check.sh` - runs formatting (fixing issues), check lint (with `--error-on-warnings` to fail on any warning-level rules), check build (without emitting), run tests
 * `health.sh` - checks gitleaks (including git), check dependencies used have up-to-date versions, that there are no vulnerabilities. If any outdated dep or vulnerability found script should fail
 * `all-checks.sh` - runs both scripts
 
@@ -49,6 +50,30 @@ Don't mention author and license in README, mentioning in `package.json` is enou
 Run `all-checks.sh`, make sure it passed without errors.
 
 In `package.json` dependencies should be above devDependencies, author and license in upper part of file.
+
+## Pre-commit hooks
+
+Use `simple-git-hooks` to run `all-checks.sh` on every commit:
+
+```bash
+pnpm add -D simple-git-hooks
+```
+
+Add to `package.json`:
+```json
+{
+  "scripts": {
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "bash all-checks.sh"
+  }
+}
+```
+
+Run `npx simple-git-hooks` once to install. After that, `pnpm install` auto-installs hooks via the `prepare` script.
+
+Skip in emergencies: `SKIP_SIMPLE_GIT_HOOKS=1 git commit ...`
 
 ## If you need docker compose
 * Use `docker compose` instead of `docker-compose`
