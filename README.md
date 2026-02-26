@@ -7,6 +7,7 @@ Central index of reusable LLM prompts kept in this directory. Each prompt lives 
 - `fixEnglish.md` – Request grammar and typo correction while preserving meaning.
 - `newProject.md` – Scaffold a new TypeScript project (dependencies, scripts, linting, security, compose notes).
 - `repoSummaryTelegram.md` – Generate a concise Russian summary of a GitHub repository for posting to a Telegram channel (English prompt text, Russian output, no emoji, includes link at end).
+- `selectelTerraformLessons.md` – Lessons learned from provisioning GPU servers on Selectel Cloud with Terraform (cloud-init pitfalls, flavor discovery, orphan cleanup, NVIDIA/CUDA, API quirks).
 - `thoughtsSummaryTelegram.md` – Generate a concise Russian summary of a GitHub "thoughts" repository (architectural or design documentation) for posting to a Telegram channel (similar structure to `repoSummaryTelegram.md` but tailored for documentation/research projects).
 
 ## Usage Pattern
