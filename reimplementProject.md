@@ -129,7 +129,7 @@ The tests must also run against official {{ORIGINAL_SYSTEM}}.
 TEST HARNESS DESIGN
 ==================================================
 
-The compatibility harness must include three layers.
+The compatibility harness must include two layers (with an optional third).
 
 ----------------------------------
 LAYER 1 — HTTP CONTRACT TESTS
@@ -277,10 +277,6 @@ Example test file list:
 07_auth_headers.test.ts
 08_concurrency.test.ts
 09_regression_quirks.test.ts
-
-apps/compat-tests/tests/integration/
-
-01_client_smoke.test.ts
 
 ==================================================
 TEST EXECUTION TARGETS
@@ -497,7 +493,7 @@ Use Docker Compose with a `record` profile or a separate `docker-compose.record.
 
 ### mitmproxy addon
 
-Write a small Python addon (~30 lines) that:
+Write a small Python addon that:
 - Intercepts each completed request/response pair
 - Skips static assets (`.js`, `.css`, `.ico`, `.png`, `.svg`, `.woff`, etc.)
 - Writes one JSON line per exchange to a session file
@@ -515,6 +511,8 @@ apps/compat-tests/captures/
 ```
 
 Use JSONL format — simple, appendable, easy to process with `jq` or TypeScript.
+
+Add `.gitleaks.toml` to exclude captures directory — recordings may contain auth tokens, API keys, or session data that would trigger secret scanning.
 
 ### Workflow
 
@@ -554,10 +552,8 @@ Stub all of them first, then visually verify the UI loads cleanly.
 
 1. **Record boot traffic** — load the UI once, identify all boot-time endpoints
 2. **Record user actions** — click through CRUD, streaming, uploads
-3. **Create PLAN.md** — list all endpoints, group into implementation steps
-4. **Stub boot endpoints** — return `[]` or static data for each
-5. **Write compat tests** — verified against the original before implementing
-6. **Implement one step at a time** — upgrade stubs to real handlers, verify tests pass
+3. **Create PLAN.md** — see IMPLEMENTATION PLAN section above
+4. **Follow the per-step cycle** — see TEST-FIRST WORKFLOW section above
 
 ### Key principles
 
