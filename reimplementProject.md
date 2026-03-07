@@ -424,6 +424,94 @@ Focus on maintainability and extensibility.
 
 ---
 
+## API Contract Discovery via Traffic Recording
+
+When the original system has a UI (web app, CLI, SDK) that exercises the backend, you can discover the real API contract by recording traffic between the client and the original backend.
+
+### Architecture
+
+```
+Client (browser/you) → Reverse proxy (serves UI) → mitmproxy (records) → Original backend
+```
+
+### Setup
+
+Use Docker Compose with a `record` profile or a separate `docker-compose.record.yml`:
+
+- **Original backend**: official image running normally
+- **mitmproxy**: `mitmproxy/mitmproxy` image in reverse proxy mode, forwarding to the backend
+- **Reverse proxy (Caddy/nginx)**: serves UI static files, routes API traffic through mitmproxy
+- **Captures volume**: mitmproxy addon writes JSONL to a mounted directory
+
+### mitmproxy addon
+
+Write a small Python addon (~30 lines) that:
+- Intercepts each completed request/response pair
+- Skips static assets (`.js`, `.css`, `.ico`, `.png`, `.svg`, `.woff`, etc.)
+- Writes one JSON line per exchange to a session file
+- Captures: method, path, query, status, request/response headers, request/response bodies, content type, duration, timestamp
+- For SSE responses: captures the full event stream text
+
+Store addon in `compose/mitmproxy-addon.py`.
+
+### Capture storage
+
+Store raw captures in `apps/compat-tests/captures/` (gitignored):
+```
+apps/compat-tests/captures/
+  session-20260307-171500.jsonl   # one line per request/response pair
+```
+
+Use JSONL format — simple, appendable, easy to process with `jq` or TypeScript.
+
+### Workflow
+
+```bash
+# Start original system + mitmproxy + UI
+pnpm compose:record:up
+
+# Open the UI in your browser, click through key scenarios:
+# - page load (discover boot-time API calls)
+# - CRUD operations
+# - streaming/SSE actions
+# - file uploads
+
+# Stop recording
+pnpm compose:record:down
+
+# Analyze captures
+pnpm captures:summary    # prints endpoint table grouped by path
+```
+
+### Analysis
+
+Write a summary script that reads JSONL and prints:
+```
+Endpoint                    Method  Status  Count
+/api/v1/nodes               GET     200     1
+/api/v1/chatflows           GET     200     3
+/api/v1/prediction/:id      POST    200     2
+```
+
+Group by path pattern, highlight which endpoints are called on startup vs. user action.
+
+### From captures to implementation
+
+1. **Review captures** — identify which endpoints the client calls on boot (must implement first)
+2. **Save response as golden** — the captured response becomes the expected fixture
+3. **Implement route** — return data matching the captured response shape
+4. **Write compat test** — replay the request against both original and reimplementation, compare normalized responses
+5. **Repeat** — one endpoint at a time, each with a passing test before moving on
+
+### Key principles
+
+- **Manual recording, not automation** — clicking through the UI is faster and more reliable than fragile Playwright selectors. Automate later when the routes are stable.
+- **Use existing tools** — mitmproxy for recording, `jq` for analysis. Don't build custom proxies.
+- **Response shape, not data** — tests should verify field names, types, and structure. Exact data values differ between instances.
+- **Iterate** — record → analyze → implement one endpoint → test → repeat.
+
+---
+
 ## Placeholder Reference
 
 | Placeholder | Description | Example |
