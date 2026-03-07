@@ -202,22 +202,16 @@ goldens/
 Normalization functions must be implemented in test-utils.
 
 ----------------------------------
-LAYER 3 — CLIENT INTEGRATION TESTS
+LAYER 3 — CLIENT INTEGRATION TESTS (optional)
 ----------------------------------
 
-Add integration tests using a real client of {{ORIGINAL_SYSTEM}}.
+Only add this layer if {{ORIGINAL_SYSTEM}} has an official client SDK
+and you need to verify SDK compatibility specifically.
 
-Primary candidate:
-
-{{OFFICIAL_CLIENT}}
-
-These tests verify that a real client can communicate with the backend.
-
-These are smoke tests.
-
-Raw HTTP tests remain the primary compatibility oracle.
-
-If no official client exists, skip this layer.
+Skip this layer by default — HTTP contract tests + golden comparison
+are sufficient for most reimplementations. Serving the original UI
+(see SERVING THE ORIGINAL UI) provides better visual validation
+than SDK smoke tests.
 
 ==================================================
 EDGE CASE COVERAGE
@@ -353,12 +347,70 @@ sse/
 TEST-FIRST WORKFLOW
 ==================================================
 
-1. Write tests describing expected API behavior
-2. Run tests against official {{ORIGINAL_SYSTEM}}
-3. Record goldens
-4. Implement server
-5. Run tests against reimplementation
-6. Fix server until tests pass
+For each endpoint or group of endpoints:
+
+1. Stub — return `[]` or static data so the UI doesn't break
+2. Write compat tests for the endpoint contract
+3. Run tests against the original {{ORIGINAL_SYSTEM}} — confirm they pass
+4. Implement the real handler in our server
+5. Run the same tests against our server — fix until green
+
+Stubs come first so the original UI can load against our backend.
+Tests are written before implementation to avoid shaping tests to match bugs.
+
+==================================================
+IMPLEMENTATION PLAN
+==================================================
+
+After traffic recording and endpoint discovery, create `apps/compat-tests/PLAN.md`.
+
+The plan should:
+
+- List all discovered endpoints grouped into implementation steps
+- Start with boot-time stubs (Step 1) — endpoints the UI calls on every page load
+- Follow with CRUD groups ordered by dependency and complexity
+- Track status per endpoint (done / stub / not started)
+- Reference the test scripts (`test:official`, `test:reimpl`, `test:record`)
+- Describe the per-step cycle explicitly
+
+Step 1 (boot stubs) only executes cycle steps 1–3.
+Later steps upgrade stubs to real implementations (cycle steps 4–5).
+
+Put simple CRUDs before complex endpoints (e.g., a dynamic node catalog
+is harder than variables CRUD — do variables first).
+
+==================================================
+SERVING THE ORIGINAL UI
+==================================================
+
+If {{ORIGINAL_SYSTEM}} has a web UI, serve it against our backend for visual validation.
+
+Use a reverse proxy (Caddy) — do NOT add static file serving to the server code.
+
+Architecture:
+
+```
+Browser → Caddy (:3000)
+  /api/* → our server (:3000 internal)
+  /*     → UI static files (extracted from original image)
+```
+
+Use Docker Compose profiles so the UI service is optional:
+
+```yaml
+services:
+  ui-copy:
+    image: {{ORIGINAL_IMAGE}}
+    profiles: [ui]
+    # extract static files to a shared volume
+  caddy:
+    image: caddy:alpine
+    profiles: [ui]
+    # serve UI + proxy /api/* to our server
+```
+
+This keeps the server pure API, while letting you visually verify
+that the UI works against our reimplementation.
 
 ==================================================
 CODE QUALITY
@@ -387,7 +439,7 @@ how to run tests
 how to record goldens
 how to run against official {{ORIGINAL_SYSTEM}}
 how to run against reimplementation
-test architecture explanation (three layers)
+test architecture explanation (two layers: HTTP contract + golden comparison)
 how to add new compatibility tests
 
 Do not mention author or license in README.
@@ -479,29 +531,33 @@ pnpm compose:record:up
 # Stop recording
 pnpm compose:record:down
 
-# Analyze captures
-pnpm captures:summary    # prints endpoint table grouped by path
+# Analyze captures with jq
+jq -r '[.method, .path, .status] | @tsv' captures/session-*.jsonl | sort | uniq -c | sort -rn
 ```
 
-### Analysis
+### Boot endpoint discovery
 
-Write a summary script that reads JSONL and prints:
-```
-Endpoint                    Method  Status  Count
-/api/v1/nodes               GET     200     1
-/api/v1/chatflows           GET     200     3
-/api/v1/prediction/:id      POST    200     2
-```
+The first recording session is the most important. Just load the UI — don't click anything.
 
-Group by path pattern, highlight which endpoints are called on startup vs. user action.
+The captured requests reveal which endpoints the UI calls on every page load.
+These are your Phase 1 stubs. Without them, the UI shows errors or blank screens.
 
-### From captures to implementation
+Common boot endpoints:
+- Node/component catalog (usually the largest response)
+- Resource lists (return `[]` initially)
+- Config/settings
+- Auth/API key checks
 
-1. **Review captures** — identify which endpoints the client calls on boot (must implement first)
-2. **Save response as golden** — the captured response becomes the expected fixture
-3. **Implement route** — return data matching the captured response shape
-4. **Write compat test** — replay the request against both original and reimplementation, compare normalized responses
-5. **Repeat** — one endpoint at a time, each with a passing test before moving on
+Stub all of them first, then visually verify the UI loads cleanly.
+
+### From captures to implementation plan
+
+1. **Record boot traffic** — load the UI once, identify all boot-time endpoints
+2. **Record user actions** — click through CRUD, streaming, uploads
+3. **Create PLAN.md** — list all endpoints, group into implementation steps
+4. **Stub boot endpoints** — return `[]` or static data for each
+5. **Write compat tests** — verified against the original before implementing
+6. **Implement one step at a time** — upgrade stubs to real handlers, verify tests pass
 
 ### Key principles
 
@@ -521,7 +577,8 @@ Group by path pattern, highlight which endpoints are called on startup vs. user 
 | `{{COMPATIBILITY_DIMENSIONS}}` | What the harness must verify | HTTP contract, JSON schema, error behaviour |
 | `{{TEST_GROUPS}}` | Test categories matching the original API | Ping, Resources CRUD, Main Action, Errors |
 | `{{UNSTABLE_FIELDS}}` | Fields to normalize in goldens | `requestId`, `createdAt`, `sessionId` |
-| `{{OFFICIAL_CLIENT}}` | Real client library for integration tests | `some-api-sdk` |
+| `{{ORIGINAL_CLIENT}}` | Real client SDK for integration tests (optional) | `some-api-sdk` |
+| `{{ORIGINAL_IMAGE}}` | Docker image of the original system | `someorg/someapi:1.0` |
 | `{{EDGE_CASES}}` | Project-specific edge cases to test | concurrent writes, large payload |
 | `{{TEST_FILES}}` | Numbered test file list | `01_ping.test.ts`, `02_resources_crud.test.ts`, ... |
 | `{{ENDPOINTS}}` | API endpoints to implement | `GET /ping`, `POST /resources`, `GET /resources/:id` |
