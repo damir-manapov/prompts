@@ -84,6 +84,21 @@ Skip in emergencies: `SKIP_SIMPLE_GIT_HOOKS=1 git commit ...`
 * Add starter service to compose file that waits all other services started successfully. Target it when starting docker compose. Place that service first
 * Don't set `restart` and `container_name` options in compose file
 
+### Docker image vulnerability scanning
+
+If the project has a Dockerfile, add a Trivy-based scan script (`compose/scan.sh`) that:
+* Builds the image, then scans it with `trivy image --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1`
+* Exits 1 on any fixable critical/high CVEs (unfixed upstream CVEs are reported but don't fail)
+* Supports `--all` flag to also scan third-party images used in compose
+
+Integrate the scan into `health.sh` (mandatory — fail if `trivy` is not installed).
+
+Harden the production Dockerfile:
+* Strip bundled npm/npx/yarn (unused when using pnpm): `rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg`
+* After production `pnpm install`, remove corepack/pnpm cache: `rm -rf /root/.cache/node /usr/local/lib/node_modules/corepack /usr/local/bin/corepack /usr/local/bin/pnpm /usr/local/bin/pnpx`
+* Run `apk update && apk upgrade --no-cache` (Alpine) to patch system packages
+* Use `--ignore-scripts` on production install to skip lifecycle hooks that need devDependencies
+
 ## If project is a pnpm monorepo
 
 Use `pnpm-workspace.yaml` with `packages: ['packages/*']`.
