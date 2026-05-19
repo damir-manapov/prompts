@@ -75,6 +75,15 @@ Run `npx simple-git-hooks` once to install. After that, `pnpm install` auto-inst
 
 Skip in emergencies: `SKIP_SIMPLE_GIT_HOOKS=1 git commit ...`
 
+**pnpm 11+**: postinstall scripts are blocked by default. `simple-git-hooks` installs hooks via a postinstall script, so it must be allow-listed in `pnpm-workspace.yaml`:
+
+```yaml
+allowBuilds:
+  simple-git-hooks: true
+```
+
+Without this, `pnpm install` prints `[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: simple-git-hooks`. The `prepare` script still runs (so hooks do get installed in our setup), but any tool relying on the postinstall path will silently break.
+
 ## If you need docker compose
 * Use `docker compose` instead of `docker-compose`
 * Make commands in `package.json` with `compose:` prefix (`compose:pull`, `compose:up`, `compose:down`, `compose:restart`, `compose:reset`)
