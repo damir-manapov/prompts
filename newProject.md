@@ -488,4 +488,58 @@ When publishing a package that may be consumed by both ESM and CJS projects (e.g
   KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
   ```
 * Remove Zookeeper service and related volumes (zookeeper-data, zookeeper-logs)
+
+### pnpm 11: `overrides` moved out of `package.json`
+* In pnpm 11+, the `pnpm.overrides` field in `package.json` is ignored — pnpm only logs a `[WARN] The "pnpm" field in package.json is no longer read by pnpm`
+* Overrides now live at the top level of `pnpm-workspace.yaml`:
+  ```yaml
+  overrides:
+    'axios@<1.15.2': '>=1.15.2'
+    'vite@<7.3.2': '>=7.3.2'
+  ```
+* Always quote keys that contain `@`, `<`, `>`, or `:` — unquoted YAML keys like `axios@<1.15.2: '>=1.15.2'` will parse incorrectly
+* Use overrides to patch transitive CVEs reported by `pnpm audit` when the direct dependency hasn't bumped its sub-dependency yet (e.g. `vitest → vite`, `trino-client → axios`)
+* After changing overrides, delete `pnpm-lock.yaml` and re-run `pnpm install` — a plain `pnpm install` may not re-resolve the affected branches
+
+### pnpm 11: `minimumReleaseAge` blocks fresh package versions
+* pnpm 11 enforces a supply-chain safety policy that refuses to install package versions published within the last ~24h ("loose mode" still surfaces them but skips during install)
+* Symptom: `pnpm add foo@latest` reports success but leaves you on an older version; `renovate-check.sh` keeps flagging the same package as outdated
+* Fix: add the package to `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`:
+  ```yaml
+  minimumReleaseAgeExclude:
+    - '@types/node'
+    - 'tsx'
+    - '@scope/specific-version@1.2.3'  # or pin to a single version
+  ```
+* Without this exclusion, `health.sh` (via `renovate-check.sh`) will fail indefinitely on the same packages
+
+### `exactOptionalPropertyTypes` and published library APIs
+* Beyond the basic `prop?: T | undefined` workaround documented in the strict-flags section, this matters most for **input option types** in public APIs of npm packages
+* Callers commonly construct option objects like `{ batchSize: opts.batchSize }` where the source property is `number | undefined`
+* With plain `batchSize?: number`, this fails with TS2379 even though it's idiomatic JS
+* Rule of thumb for libraries: declare optional **inputs** as `?: T | undefined`, optional **outputs/results** the same way for symmetry
+* For internal-only interfaces, plain `?: T` is fine and catches more bugs
+
+### Biome 2.x: `noNonNullAssertion` default severity is `warn`, not `error`
+* The recommended ruleset (`"recommended": true`) sets `style.noNonNullAssertion` to `warn`
+* If the project requires lint to fail on `!` (non-null assertion) usage, you must **both**:
+  1. Override the severity in `biome.json`: `"style": { "noNonNullAssertion": "error" }`
+  2. Pass `--error-on-warnings` to `biome lint` (covers any other warn-level rules)
+* Same applies to `performance.noDelete` (warn by default) and other warn-level rules
+* Easy to miss: a project can have `--error-on-warnings` set and still allow `!` because the rule is at `warn` and Biome ignores severity-`warn` rules when not running with that flag in some commands
+
+### YAML: quote keys with special characters
+* Override keys like `axios@<1.15.2` or `vite@>=7.0.0` must be quoted in YAML
+* Unquoted `axios@<1.15.2: '>=1.15.2'` is parsed as `axios@: <1.15.2 ...` (the `<` is a flow indicator)
+* Always single-quote keys containing `@`, `<`, `>`, `:`, `#`, `&`, `*`, `!`, `|`, `>`, `'`, `"`, `%`
+
+### Gitleaks: scan both committed and working-tree files
+* `gitleaks git . -v` scans commit history only
+* `gitleaks dir . -v` scans the current working tree (including uncommitted changes and untracked files)
+* `health.sh` should run **both** to catch secrets in files that haven't been committed yet:
+  ```bash
+  gitleaks git . -v
+  gitleaks dir . -v
+  ```
+
 * Remove `KAFKA_ZOOKEEPER_CONNECT` environment variable
