@@ -86,14 +86,17 @@ Use `#!/usr/bin/env bash` + `set -euo pipefail`; simple, informative, fail-fast.
     are SDK-pinned and would always look "outdated").
   * `pnpm outdated <dev-tooling-only>` (e.g. `vitest @types/react @types/node @biomejs/biome
     simple-git-hooks`) — dev deps you actually control.
-  * `pnpm audit --ignore-unfixable`.
+  * `pnpm audit` (plain — do NOT use `--ignore-unfixable`, which churns `auditConfig` every
+    run; pin genuinely-unfixable advisories in `auditConfig.ignoreGhsas` instead, see lesson).
   * `pnpm dlx expo-doctor@latest` — MUST pass (see §4).
 * `all-checks.sh` = both; wired as the `simple-git-hooks` pre-commit hook.
 
 Wire `simple-git-hooks` exactly as `newProject.md` describes. On pnpm 10 the `pnpm` field
-(`onlyBuiltDependencies`, `overrides`) lives in `package.json`; on pnpm 11 it moves to
-`pnpm-workspace.yaml` (`allowBuilds`, `overrides`, `minimumReleaseAge: 0` so EAS installs
-don't fail on freshly-published transitive deps).
+(`onlyBuiltDependencies`, `overrides`) lives in `package.json`. On pnpm 11 that field is
+ignored — move config to `pnpm-workspace.yaml`, where `onlyBuiltDependencies` is **replaced**
+by an `allowBuilds` approval map (`allowBuilds: { simple-git-hooks: true }`) and freshly-
+published packages blocked by pnpm's default supply-chain policy go in
+`minimumReleaseAgeExclude` (see the migration lesson below).
 
 ## 4. app.json — validate with `expo-doctor`, mind the schema
 
@@ -105,9 +108,12 @@ traps (properties that were REMOVED and now fail validation — do not set them)
   "backgroundColor": "#..." }]`).
 * `android.edgeToEdgeEnabled` — edge-to-edge is the default; the flag is gone.
 
-Register native modules that ship a config plugin in `plugins` (e.g. `expo-sqlite`,
-`expo-sharing`) — required for prebuild/EAS. Do NOT copy another project's
-`extra.eas.projectId` or `owner` — those are created per-account on first EAS build.
+Only list packages in `plugins` that actually need config-time native changes (e.g.
+`expo-splash-screen`). Autolinked native modules like `expo-sqlite`, `expo-sharing`, and
+`expo-status-bar` link automatically and must NOT be added — listing them adds fragile
+config-plugin resolution that fails (`Failed to resolve plugin for module ...`) when
+`node_modules` is absent or under pnpm's symlinked layout on Windows. Do NOT copy another
+project's `extra.eas.projectId` or `owner` — those are created per-account on first EAS build.
 
 Icon/splash assets to provide (Expo generates the per-platform sizes from these):
 * `icon` — 1024×1024 opaque PNG (Expo rounds it per platform).
@@ -129,7 +135,9 @@ ETL/codegen step (`scripts/generate-*.ts`), not hand-authoring:
 * Give the codegen its own fidelity checks (unique ids, valid answer refs, every referenced
   image exists on disk) so import/transcription mistakes fail loudly.
 * Keep generated files gitignored; regenerate via a `codegen` script. Commit the raw source
-  data instead.
+  data instead. Because EAS bundles from committed files only, wire the same script into an
+  `eas-build-post-install` npm hook so the build server regenerates them before Metro runs
+  (see §8) — otherwise the bundle fails with `Unable to resolve module .../generated/...`.
 * For official/legal content: record exactly which source/version/date was imported, verify
   licensing before bundling, and add content-invariant tests over the bank.
 
@@ -155,14 +163,22 @@ ETL/codegen step (`scripts/generate-*.ts`), not hand-authoring:
 Vitest tests pure logic ONLY (`<domain>Logic.ts`, `databaseMappers.ts`, `backupFormat.ts`,
 content invariants) — never React components, native modules, or timers.
 `vitest.config.ts`: `include: ['src/tests/**/*.test.ts']`, `environment: 'node'`. Assert exact
-outputs by passing a seeded `random`, not "it didn't crash".
+outputs by passing a seeded `random`, not "it didn't crash". Vitest 4 may warn that
+`vitest.config.ts` uses ESM syntax while loaded as CommonJS — harmless; leave it, since adding
+`"type": "module"` to silence it risks Metro/Expo's CommonJS assumptions.
 
 ## 8. EAS Build
 
 Add `eas.json` with `development` (dev client), `preview` (internal, Android `apk` for
 sideload testing), and `production` (store `aab`, `autoIncrement`) profiles. Document the
 build command in the README (`npx eas-cli build --platform android --profile preview`;
-requires `eas login` and creates the `projectId` on first run).
+requires `eas login` and creates the `projectId` on first run). EAS evaluates the app config
+(plugins) **locally** before upload, so `pnpm install` and any `codegen` must have run in the
+checkout first — a fresh clone that skips them fails with `Failed to resolve plugin ... Do you
+have node modules installed?`. But the **Metro bundle runs on the EAS server from committed
+files only**, so gitignored generated assets (§5) are absent there. Regenerate them on the
+server with an `eas-build-post-install` npm script (`"eas-build-post-install": "node
+scripts/generate-*.ts"`), which EAS runs after `pnpm install` and before bundling.
 
 For store submission, keep a `store-listing.md` with the marketing copy (Google Play limits:
 short description ≤ 80 chars, full description ≤ 4000 chars) in the app's language(s), plus
@@ -196,10 +212,28 @@ Put `expo-doctor` in `health.sh` so it's gated on every commit.
 `expo install expo-splash-screen` and configure it in `plugins`. The old top-level `splash`
 object is rejected by the current schema.
 
+### Only config plugins belong in `plugins` — not autolinked modules
+Autolinked native modules (`expo-sqlite`, `expo-sharing`, `expo-status-bar`) are linked without
+any `app.json` entry. Listing them in `plugins` "to be safe" adds config-plugin resolution that
+fails with `Failed to resolve plugin for module <pkg>` whenever `node_modules` isn't installed
+(fresh clone, CI) or under pnpm's symlinked layout on Windows. Keep `plugins` to packages that
+really modify native build config (e.g. `expo-splash-screen`); `expo-doctor` passes either way,
+so this only surfaces at prebuild/EAS time.
+
 ### Metro can't resolve dynamic `require()` — generate a static asset map
 Bundled images must be referenced by static string-literal `require('./assets/x.png')`. Codegen
 a `Record<path, require(...)>` lookup table over the content bank rather than building paths at
 runtime.
+
+### Gitignored generated assets need an `eas-build-post-install` codegen hook
+EAS Build uploads **only committed files** and runs Metro on its server, so anything the
+codegen emits (the `assets/` bundle + the generated `imageAssets.ts` require-map) is missing
+there and the bundle dies with `Unable to resolve module ../data/generated/imageAssets`. Local
+`expo start` doesn't catch it because the files already exist in your working tree. Don't fix
+this by committing the generated output (it duplicates the raw source — e.g. hundreds of
+images). Instead add `"eas-build-post-install": "node scripts/generate-*.ts"` to `scripts`;
+EAS runs it after `pnpm install`, regenerating everything from the committed raw data before
+bundling. Verify by deleting the generated dirs and re-running the hook locally.
 
 ### Don't `pnpm outdated` the Expo/RN packages
 `react-native`, `react`, and `expo-*` are pinned to the installed SDK; they will always show as
@@ -213,13 +247,53 @@ main `tsc` run and import app types. Add `@types/node`; avoid TS-only runtime fe
 
 ### Transitive advisory in Expo build tooling
 `pnpm audit` can flag a transitive dep deep in Expo's tooling (e.g. `xcode > uuid`). If a fix
-exists, pin it via a pnpm `overrides` entry (`"uuid@<11.1.1": ">=11.1.1"`) after confirming the
-consumer's API usage survives the bump; delete the lockfile and reinstall so the branch
-re-resolves. Use `pnpm audit --ignore-unfixable` so genuinely-unfixable advisories don't block
-the hook forever.
+exists that the consumer can take, pin it via a pnpm `overrides` entry
+(`"uuid@<11.1.1": ">=11.1.1"`) after confirming the consumer's API usage survives the bump;
+delete the lockfile and reinstall so the branch re-resolves. When the only "fix" is a MAJOR
+bump the consumer can't take (e.g. Metro pins `image-size` 1.x, patched only in 2.x, so the
+override breaks `pnpm install`), treat it as unfixable: pin the specific `GHSA-...` ids in
+`auditConfig.ignoreGhsas` (see the audit-churn lesson) rather than forcing the bump.
 
 ### Strict flags bite React Native code specifically
 `noUncheckedIndexedAccess` makes `array[i]` / `record[key]` `T | undefined` — guard shuffle
 swaps and `imageAssets[path]` lookups. `exactOptionalPropertyTypes` forbids assigning
 `undefined` to optional props — build session/domain objects with conditional spreads
 (`...(x !== undefined ? { x } : {})`) instead of `field: x` where `x` may be undefined.
+
+### Migrating to pnpm 11: `allowBuilds` replaces `onlyBuiltDependencies`, and the supply-chain policy gates fresh packages
+The original `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` an EAS build hit on a teammate's machine
+traces back to these two breaking changes — worth doing deliberately, not via a stray
+`corepack use`.
+* Pin the toolchain with `package.json` `"packageManager": "pnpm@X"`; corepack auto-selects it
+  **inside the project**, so you never need `corepack use`. Running `corepack use pnpm@11` in a
+  project still pinned to 10 rewrites the pin and trips the checks below mid-install.
+* pnpm 11 stops reading the `pnpm` field in `package.json`. Move `overrides` and `auditConfig`
+  to the top level of `pnpm-workspace.yaml`.
+* `onlyBuiltDependencies` is **not honored** — a dependency's build/postinstall (e.g.
+  `simple-git-hooks`) is skipped and pnpm reports `[ERR_PNPM_IGNORED_BUILDS]`. Approve it with an
+  `allowBuilds` map (`allowBuilds:` → `  simple-git-hooks: true`). `pnpm install` writes a
+  `set this to true or false` placeholder you must resolve, then re-run to confirm a clean pass.
+  Drop entries for tools that no longer build natively (e.g. vitest 4 no longer pulls `esbuild`).
+* pnpm 11 enforces a default `minimumReleaseAge` supply-chain delay. On a strict machine it hard-
+  fails `[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION]`; otherwise pnpm auto-appends the offending
+  versions to `minimumReleaseAgeExclude` in `pnpm-workspace.yaml` (e.g. every `@biomejs/*` platform
+  binary). **Commit that list** — it's what lets teammates and EAS install the same fresh versions.
+  Prefer per-package excludes over `minimumReleaseAge: 0`, which disables the protection wholesale.
+* Migration recipe: bump the `packageManager` pin → `corepack prepare pnpm@X --activate` → delete
+  `pnpm-lock.yaml` → `pnpm install` (run directly, not piped — the "remove node_modules? / approve
+  builds" prompts hang behind a pipe) → resolve the `allowBuilds` placeholder → `pnpm install`
+  again → run all gates.
+
+### `pnpm audit --ignore-unfixable` churns `auditConfig` every run — pin GHSAs instead
+`pnpm audit --ignore-unfixable` rewrites `auditConfig` on every invocation when there's nothing
+new to record, toggling `auditConfig: {}` ⇄ `auditConfig: { ignoreGhsas: null }`. Inside the
+pre-commit hook that leaves `pnpm-workspace.yaml` perpetually dirty (a fresh one-line diff after
+every commit), and no committed value is stable. Fix: drop the flag, run **plain `pnpm audit`**,
+and record each genuinely-unfixable advisory explicitly:
+```yaml
+auditConfig:
+  ignoreGhsas:
+    - 'GHSA-w3rx-r6r6-pgpr'   # image-size DoS, transitive via expo>metro, build-only
+```
+Plain `pnpm audit` reads that list, exits 0, and never rewrites the file — and each ignore is an
+explicit, greppable line you can annotate with *why* it's safe.
